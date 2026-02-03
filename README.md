@@ -1,1 +1,1 @@
-[Play game!](https://admiral-gunter.github.io/html-fishing-game/)
+[Play game!](https://arfli.github.io/html-fishing-game/)

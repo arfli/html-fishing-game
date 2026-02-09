@@ -123,6 +123,69 @@
 .log-command { background: #2a3; color: #fff; }
 .log-error { background: #a22; color: #fff; }
 .log-info { background: #227; color: #fff; }
+.stats-panel {
+    display: flex;
+    gap: 16px;
+    background: #111;
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid #444;
+    margin-bottom: 10px;
+}
+.stats-panel div {
+    font-weight: bold;
+}
+
+.progress-container {
+    width: 100%;
+    height: 14px;
+    background: #333;
+    border-radius: 7px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+#fishing-progress {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #ffeb3b, #f44336);
+    transition: width 0.3s;
+}
+
+
+.scene {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 10px;
+  flex-wrap: wrap; /* important */
+}
+
+.scene img {
+  width: 180px;
+  max-width: 40vw;
+  height: auto;
+}
+
+#fishing-canvas {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  aspect-ratio: 3 / 1; /* keeps canvas proportion */
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .scene {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .scene img {
+    width: 150px;
+  }
+}
     </style>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -217,9 +280,12 @@
                     if (!caughtFish && isPoleSizeValid(poleSize, size)) {
                         const fishType = `${baitColor} ${size}`;
                         if (fishPopulations[fishType] > 0) {
+
                             fishPopulations[fishType]--;
                             const fishPrice = getFishPrice(baitColor, size)
-                            addLog(`You've caught a ${fishType}, Sold for ${fishPrice}`);
+                            // addLog(`You've caught a ${fishType}, Sold for ${fishPrice}`);
+                            addLog(`🐟 Caught a ${fishType} for 💰 ${fishPrice}`, "event");
+
                             earnings += fishPrice;
                             caughtFish = true;
                         }
@@ -341,7 +407,6 @@
             const forecastNews = `Forecast today, we’re seeing ${forecast.small} small fish, ${forecast.medium} medium fish, and ${forecast.big} big fish. ${Math.round(forecast.red * 100)}% of the fish are red, ${Math.round(forecast.blue * 100)}% are blue, ${Math.round(forecast.green * 100)}% are green. `
 
             addLog(forecastNews, "info");
-           
 
 
             document.getElementById("fish").addEventListener("click", () => {
@@ -380,6 +445,24 @@
                 }, timeout);
 
 
+                
+                function startFishingProgress(duration = 4000) {
+                    const bar = document.getElementById("fishing-progress");
+                    bar.style.width = "0%";
+                    let start = Date.now();
+
+                    const interval = setInterval(() => {
+                        const elapsed = Date.now() - start;
+                        bar.style.width = `${Math.min(100, elapsed / duration * 100)}%`;
+                        if (elapsed >= duration) clearInterval(interval);
+                    }, 100);
+                }
+
+
+
+                startFishingProgress(timeout);
+
+
                 if (!baits.length) {
                     addLog("You didn't buy any bait! You can't fish today.", "error");
                     addLog(`Final Gold: ${gold}`, "info");
@@ -392,7 +475,7 @@
 
 
                     setTimeout(() => {
-                        addLog("waiting for the fish to take the bait.......", "command")
+                        addLog("waiting for the fish to take the bait.......", "info")
                     }, 2000);
 
                 }
@@ -416,6 +499,8 @@
                     }
                     endDay()
                 }, timeout);
+
+
 
 
             });
@@ -480,6 +565,69 @@
 
 
             document.getElementById("buy-pole").addEventListener("click", pickFishingPole );
+            const canvas = document.getElementById("fishing-canvas");
+const ctx = canvas.getContext("2d");
+
+const fishes = [
+  createFish("green"),
+  createFish("red"),
+  createFish("blue"),
+];
+
+function createFish(color) {
+  return {
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    speed: 1 + Math.random() * 1.5,
+    dir: Math.random() < 0.5 ? 1 : -1,
+    color,
+  };
+}
+
+function drawFish(fish) {
+  ctx.save();
+  ctx.translate(fish.x, fish.y);
+  ctx.scale(fish.dir, 1);
+
+  ctx.fillStyle = fish.color;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 18, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(-18, 0);
+  ctx.lineTo(-28, -6);
+  ctx.lineTo(-28, 6);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(8, -2, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function updateFish(fish) {
+  fish.x += fish.speed * fish.dir;
+
+  if (fish.dir === 1 && fish.x > canvas.width + 30) fish.x = -30;
+  if (fish.dir === -1 && fish.x < -30) fish.x = canvas.width + 30;
+
+  fish.y += Math.sin(Date.now() / 500 + fish.x) * 0.3;
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  fishes.forEach(fish => {
+    updateFish(fish);
+    drawFish(fish);
+  });
+  requestAnimationFrame(animate);
+}
+
+animate();
 
         });
 
@@ -497,17 +645,27 @@ new Audio('assets/Instrument of Surrender-480x480-avc1-mp4a.mp3').play()
 
 
         <div style="width: 100">
-            <p id="gold" style="margin: 0;">Gold: 100</p>
+            <div class="stats-panel">
+                <div>💰 <span id="gold">100</span></div>
+                <div>🎣 Pole: <span id="selected-poleSize">none</span></div>
+                <div>🪱 <span id="bait">no bait</span></div>
+            </div>
+      
+            
+            
+            <!-- <p id="gold" style="margin: 0;">Gold: 100</p>
 
-            <p id="bait" style="margin: 0; padding: 0;">no bait<p>
+            <p id="bait" style="margin: 0; padding: 0;">no bait<p> -->
                     
-            <p style="margin: 0;  padding: 0;">Selected Pole : <span id="selected-poleSize">none</span></p>
 
             <div>
                 <h2>Choose a Fishing Pole</h2>
-                <label><input type="radio" name="pole" value="small"> Small Pole (5 gold)</label>
-                <label><input type="radio" name="pole" value="medium"> Medium Pole (10 gold)</label>
-                <label><input type="radio" name="pole" value="big"> Big Pole (15 gold)</label>
+
+                <label><input type="radio" name="pole" value="small"> 🎣 Small (5)</label>
+                <label><input type="radio" name="pole" value="medium"> 🐠 Medium (10)</label>
+                <label><input type="radio" name="pole" value="big"> 🐋 Big (15)</label>
+
+                    
                 <div style="display: flex; justify-content: end;">
                     <button id="buy-pole" class="cartoon-button" style="background: orange;">Rent Pole</button>
                 </div>
@@ -515,9 +673,9 @@ new Audio('assets/Instrument of Surrender-480x480-avc1-mp4a.mp3').play()
 
             <div style="margin-bottom: 1%; ">
                 <h2>Buy Bait</h2>
-                <label><input type="radio" name="bait" value="red"> Red Bait (1 gold)</label>
-                <label><input type="radio" name="bait" value="blue"> Blue Bait (2 gold)</label>
-                <label><input type="radio" name="bait" value="green"> Green Bait (3 gold)</label>
+                <label><input type="radio" name="bait" value="red"> 🔴 Bait (1 gold)</label>
+                <label><input type="radio" name="bait" value="blue"> 🔵 Bait (2 gold)</label>
+                <label><input type="radio" name="bait" value="green"> 🟢 Bait (3 gold)</label>
                 <div style="display: flex; justify-content: end;">
 
                     <button id="buy-bait" class="cartoon-button" style="background: orange;">Buy Bait</button>
@@ -539,13 +697,23 @@ new Audio('assets/Instrument of Surrender-480x480-avc1-mp4a.mp3').play()
 
     <div id="game-log" style="height: 150px; overflow-y: auto; border: 1px solid #ccc;"></div>
 
-    <div style="position: relative; display: flex; justify-content: center; margin-top: 10px;">
-        <img src="assets/habor.gif" alt="" style="width: 20%; height: 20%;" id="habor-gif">
-        <img src="assets/boat.gif" alt="" style="width: 20%; height: 20%; display: none;" id="boat-gif">
-        <img src="assets/sunset.gif" alt="" style="width: 20%; height: 20%; display: none;" id="sunset-gif">
+    <div class="scene">
+        <img src="assets/habor.gif" alt="" style="width: 30rem; height: 20%;" id="habor-gif">
+        <img src="assets/boat.gif" alt="" style="width: 30rem; height: 20%; display: none;" id="boat-gif">
+        <img src="assets/sunset.gif" alt="" style="width: 30rem; height: 20%; display: none;" id="sunset-gif">
+      
+        <canvas id="fishing-canvas" width="600" height="200"
+          style="border:2px solid #444; background:#0b3d91; border-radius:8px;">
+        </canvas>
+      </div>
+        
 
-
+    <div class="progress-container">
+        <div id="fishing-progress"></div>
     </div>
+
+    
+
 
 </body>
 

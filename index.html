@@ -82,6 +82,47 @@
             transform: translate(0px, 0px);
             box-shadow: inset -2px 2px 0 #444;
         }
+
+        #game-log {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #222;
+    padding: 8px;
+    border-radius: 6px;
+    font-family: monospace;
+}
+.log-entry {
+    margin-bottom: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: logFadeIn 0.5s forwards;
+}
+@keyframes logFadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.log-icon {
+    margin-right: 8px;
+    font-size: 1.2em;
+}
+.log-timestamp {
+    color: #aaa;
+    margin-right: 6px;
+}
+.log-type {
+    font-weight: bold;
+    margin-right: 6px;
+}
+.log-event { background: #333; color: #fff; }
+.log-command { background: #2a3; color: #fff; }
+.log-error { background: #a22; color: #fff; }
+.log-info { background: #227; color: #fff; }
     </style>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -215,19 +256,25 @@
                 (poleSize === "medium" && fishSize === "medium") ||
                 (poleSize === "big" && fishSize === "big");
         }
-
-        function addLog(message) {
-            const log = document.getElementById("game-log");
-            const p = document.createElement("p");
-            p.textContent = message;
-            log.appendChild(p);
-
-
-            log.scrollTo({
-                top: log.scrollHeight,
-                behavior: 'smooth'
-            });
-
+        function addLog(message, type = "event") {
+            const logContainer = document.getElementById('game-log');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type} log-animate`;
+            const timestamp = new Date().toLocaleTimeString();
+            const icons = {
+                event: "📝",
+                command: "⚡",
+                error: "❌",
+                info: "ℹ️"
+            };
+            logEntry.innerHTML = `
+                <span class="log-icon">${icons[type] || icons.event}</span>
+                <span class="log-timestamp">${timestamp}</span>
+                <span class="log-type">${type.toUpperCase()}</span>:
+                <span class="log-message">${message}</span>
+            `;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
         }
 
 
@@ -261,7 +308,7 @@
                     baits.push("green");
                     gold -= 3;
                 } else {
-                    addLog("Invalid choice or not enough gold.");
+                    addLog("Invalid choice or not enough gold.", "error");
                 }
 
             document.getElementById('bait').textContent = countBaitByColor(baits)
@@ -289,18 +336,18 @@
 
             const forecast = getForecast();
 
-            addLog(`The date is ${incrementedDateFormatted}`);
+            addLog(`The date is ${incrementedDateFormatted}`, "info");
 
             const forecastNews = `Forecast today, we’re seeing ${forecast.small} small fish, ${forecast.medium} medium fish, and ${forecast.big} big fish. ${Math.round(forecast.red * 100)}% of the fish are red, ${Math.round(forecast.blue * 100)}% are blue, ${Math.round(forecast.green * 100)}% are green. `
 
-            addLog(forecastNews);
+            addLog(forecastNews, "info");
            
 
 
             document.getElementById("fish").addEventListener("click", () => {
 
                 if (!poleSize) {
-                    addLog('Fishing Pole have not been selected')
+                    addLog('Fishing Pole have not been selected', "error")
 
                     return;
                 }
@@ -334,18 +381,18 @@
 
 
                 if (!baits.length) {
-                    addLog("You didn't buy any bait! You can't fish today.");
-                    addLog(`Final Gold: ${gold}`);
+                    addLog("You didn't buy any bait! You can't fish today.", "error");
+                    addLog(`Final Gold: ${gold}`, "info");
                     endDay()
                     return;
                 } else {
                     setTimeout(() => {
-                        addLog("casting the fishing hook... ");
+                        addLog("casting the fishing hook... ", "command");
                     }, 1000);
 
 
                     setTimeout(() => {
-                        addLog("waiting for the fish to take the bait.......")
+                        addLog("waiting for the fish to take the bait.......", "command")
                     }, 2000);
 
                 }
@@ -355,17 +402,17 @@
                     const earnings = goFishing(poleSize, baits, forecast);
                     gold += earnings;
 
-                    addLog(`Total Earnings: ${earnings}`);
-                    addLog(`Final Gold: ${gold}`);
+                    addLog(`Total Earnings: ${earnings}`, "info");
+                    addLog(`Final Gold: ${gold}`), "info";
                     
                     updateGold(gold)
 
                     if (gold > 100) {
-                        addLog("You win!");
+                        addLog("You win!", "event");
                     } else if (gold === 100) {
-                        addLog("It's a tie!");
+                        addLog("It's a tie!", "event");
                     } else {
-                        addLog("You lose!");
+                        addLog("You lose!", "event");
                     }
                     endDay()
                 }, timeout);
@@ -376,8 +423,8 @@
 
         function endDay() {
             document.getElementById('fish').disabled = false
-            addLog("The sun is setting...")
-            addLog("Please skip the day and continue fishing tomorrow")
+            addLog("The sun is setting...", "info")
+            addLog("Please skip the day and continue fishing tomorrow", "info")
 
             document.getElementById("fish").style.display = "none"
             document.getElementById("skip").style.display = "block"
@@ -401,7 +448,8 @@
             const poleChoice = document.querySelector('input[name="pole"]:checked').value;
 
             if (poleChoice == poleSize) {
-                addLog("This pole already selected.");
+                addLog("This pole already selected.", "error");
+                return;
             }
             else if (poleChoice === "small" && gold >= 5) {
                 poleSize = "small";
@@ -413,8 +461,10 @@
                 poleSize = "big";
                 gold -= 15;
             } else {
-                addLog("Invalid choice or not enough gold.");
+                addLog("Invalid choice or not enough gold.",    "error");
             }
+            addLog("Pole selected is "+poleSize+".", "command");
+
             document.getElementById('selected-poleSize').textContent = poleSize
 
             updateGold(gold);
